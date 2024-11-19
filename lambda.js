@@ -42,7 +42,7 @@ exports.handler = async (event) => {
     const message = JSON.parse(event.Records[0].Sns.Message);
     const { email, verificationToken } = message;
 
-    const BASE_URL = process.env.BASE_URL || 'http://dev.akashchhabria.me';
+    const BASE_URL = process.env.BASE_URL || 'http://demo.akashchhabria.me';
     const verificationLink = `${BASE_URL}/v1/verify?user=${encodeURIComponent(
       email
     )}&token=${verificationToken}`;
