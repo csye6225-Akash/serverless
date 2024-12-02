@@ -30,15 +30,36 @@
 //   }
 // };
 
+const AWS = require('aws-sdk');
 const mailgun = require('mailgun-js');
 
-const mg = mailgun({
-  apiKey: process.env.MAILGUN_API_KEY, // Your Mailgun API key
-  domain: process.env.MAILGUN_DOMAIN, // Your Mailgun domain
-});
+// Initialize Secrets Manager client
+const secretsManager = new AWS.SecretsManager();
+
+async function getSecret(secretName) {
+  try {
+    const data = await secretsManager.getSecretValue({ SecretId: secretName }).promise();
+    if ('SecretString' in data) {
+      return JSON.parse(data.SecretString);
+    }
+    throw new Error('SecretString not found in secret');
+  } catch (error) {
+    console.error(`Failed to fetch secret: ${error.message}`);
+    throw error;
+  }
+}
 
 exports.handler = async (event) => {
   try {
+    // Fetch Mailgun API key from Secrets Manager
+    const secretName = 'mailgun-api-key';
+    const secrets = await getSecret(secretName);
+
+    const mg = mailgun({
+      apiKey: secrets.MAILGUN_API_KEY, // Fetched Mailgun API key
+      domain: process.env.MAILGUN_DOMAIN, // Environment variable for Mailgun domain
+    });
+
     const message = JSON.parse(event.Records[0].Sns.Message);
     const { email, verificationToken } = message;
 
@@ -48,7 +69,7 @@ exports.handler = async (event) => {
     )}&token=${verificationToken}`;
 
     const emailData = {
-      from: 'no-reply@demo.akashchhabria.me', // Sender email
+      from: 'no-reply@demo.akashchhabria.me',
       to: email,
       subject: 'Verify Your Email',
       text: `Please verify your email by clicking the following link: ${verificationLink}`,
@@ -69,8 +90,6 @@ exports.handler = async (event) => {
     throw new Error(`Failed to send verification email: ${error.message}`);
   }
 };
-
- 
 
  
  
